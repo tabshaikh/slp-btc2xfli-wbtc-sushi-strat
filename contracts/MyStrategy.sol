@@ -64,7 +64,7 @@ contract MyStrategy is BaseStrategy {
 
     // @dev Specify the name of the strategy
     function getName() external pure override returns (string memory) {
-        return "StrategyName";
+        return "SLP-BTC2xFLI-WBTC-Sushi-Strategy";
     }
 
     // @dev Specify the version of the Strategy, for upgrades
