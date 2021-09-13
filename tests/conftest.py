@@ -8,13 +8,13 @@ from brownie import (
 from config import (
     BADGER_DEV_MULTISIG,
     WANT,
-    LP_COMPONENT,
     REWARD_TOKEN,
     PROTECTED_TOKENS,
     FEES,
 )
 from dotmap import DotMap
 import pytest
+import time
 
 
 @pytest.fixture
@@ -65,13 +65,14 @@ def deployed():
         guardian,
         PROTECTED_TOKENS,
         FEES,
+        {"from": deployer},
     )
 
     ## Tool that verifies bytecode (run independently) <- Webapp for anyone to verify
 
     ## Set up tokens
     want = interface.IERC20(WANT)
-    lpComponent = interface.IERC20(LP_COMPONENT)
+    # lpComponent = interface.IERC20(LP_COMPONENT)
     rewardToken = interface.IERC20(REWARD_TOKEN)
 
     ## Wire up Controller to Strart
@@ -79,15 +80,55 @@ def deployed():
     controller.approveStrategy(WANT, strategy, {"from": governance})
     controller.setStrategy(WANT, strategy, {"from": deployer})
 
+    btc2xfli_address = strategy.btc2xfli()
+    wbtc_address = strategy.wBTC()
+    SUSHI = strategy.reward()
+    btc2xfli = interface.IERC20(btc2xfli_address)
+    wbtc = interface.IERC20(wbtc_address)
+    sushi = interface.IERC20(SUSHI)
+
     ## Uniswap some tokens here
-    router = interface.IUniswapRouterV2("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
+    router = interface.IUniswapRouterV2(strategy.SUSHISWAP_ROUTER())
+
+    sushi.approve(router.address, 999999999999999999999999999999, {"from": deployer})
+    btc2xfli.approve(router.address, 999999999999999999999999999999, {"from": deployer})
+    wbtc.approve(router.address, 999999999999999999999999999999, {"from": deployer})
+
+    deposit_amount = 5 * 10 ** 18
+
+    # Buy wbtc with path ETH -> WETH -> WBTC
     router.swapExactETHForTokens(
-        0,  ## Mint out
-        ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", WANT],
+        0,
+        ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", wbtc_address],
         deployer,
         9999999999999999,
-        {"from": deployer, "value": 5000000000000000000},
+        {"value": deposit_amount, "from": deployer},
     )
+
+    # Buy btc2xfli with path ETH -> WETH -> btc2xfli
+    router.swapExactETHForTokens(
+        0,
+        ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", wbtc_address, btc2xfli_address],
+        deployer,
+        9999999999999999,
+        {"value": deposit_amount, "from": deployer},
+    )
+
+    # Add WETH-SUSHI liquidity
+    router.addLiquidity(
+        btc2xfli_address,
+        wbtc_address,
+        btc2xfli.balanceOf(deployer),
+        wbtc.balanceOf(deployer),
+        btc2xfli.balanceOf(deployer) * 0.005,
+        wbtc.balanceOf(deployer) * 0.005,
+        deployer,
+        int(time.time()) + 1200,
+        {"from": deployer},
+    )
+
+    assert want.balanceOf(deployer) > 0
+    print("Initial Want Balance: ", want.balanceOf(deployer.address))
 
     return DotMap(
         deployer=deployer,
@@ -97,7 +138,7 @@ def deployed():
         strategy=strategy,
         # guestList=guestList,
         want=want,
-        lpComponent=lpComponent,
+        # lpComponent=lpComponent,
         rewardToken=rewardToken,
     )
 
@@ -135,7 +176,7 @@ def want(deployed):
 
 @pytest.fixture
 def tokens():
-    return [WANT, LP_COMPONENT, REWARD_TOKEN]
+    return [WANT, REWARD_TOKEN]
 
 
 ## Accounts ##

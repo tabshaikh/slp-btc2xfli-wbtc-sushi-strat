@@ -2,7 +2,7 @@ import time
 
 from brownie import accounts, network, MyStrategy, SettV3, BadgerRegistry
 
-from config import WANT, REWARD_TOKEN, LP_COMPONENT, REGISTRY
+from config import WANT, REWARD_TOKEN, REGISTRY
 
 from helpers.constants import AddressZero
 
@@ -139,7 +139,7 @@ def check_parameters(
 ):
     assert strategy.want() == WANT
     assert vault.token() == WANT
-    assert strategy.lpComponent() == LP_COMPONENT
+    # assert strategy.lpComponent() == LP_COMPONENT
     assert strategy.reward() == REWARD_TOKEN
 
     assert strategy.controller() == controller
