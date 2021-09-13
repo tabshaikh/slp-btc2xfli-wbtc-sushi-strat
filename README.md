@@ -1,3 +1,9 @@
+# BTC2X-FLI/WBTC Sushi Strategy
+![btc2xfli-wbtc](https://user-images.githubusercontent.com/31198893/133130794-ace0cc27-fe74-47a8-bf5a-c56494188fb4.jpg)
+
+### APR ( as calculated on 13th September, 2021)
+APR = 0.25% (Pool fees by depositing BTC2X-FLI and WBTC in BTC2X-FLI/WBTC pool) + 20.03% (Depositing SLP-BTC2X-FLI/WBTC into Sushifarm) = 20.28%
+
 # Badger Strategy V1 Brownie Mix
 
 - Video Introduction: https://youtu.be/FVbhgPYW_D0
