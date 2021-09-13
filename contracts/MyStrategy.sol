@@ -22,7 +22,6 @@ contract MyStrategy is BaseStrategy {
     using SafeMathUpgradeable for uint256;
 
     // address public want // Inherited from BaseStrategy, the token the strategy wants, swaps into and tries to grow
-    address public lpComponent; // Token we provide liquidity with
     address public reward; // Token we farm and swap to want / lpComponent
 
     // pair info https://sushiswap-vision.vercel.app/pair/0x164fe0239d703379bddde3c80e4d4800a1cd452b
@@ -66,8 +65,7 @@ contract MyStrategy is BaseStrategy {
 
         /// @dev Add config here
         want = _wantConfig[0];
-        lpComponent = _wantConfig[1];
-        reward = _wantConfig[2];
+        reward = _wantConfig[1];
 
         performanceFeeGovernance = _feeConfig[0];
         performanceFeeStrategist = _feeConfig[1];
@@ -91,12 +89,13 @@ contract MyStrategy is BaseStrategy {
 
     /// @dev Balance of want currently held in strategy positions
     function balanceOfPool() public view override returns (uint256) {
-        return 0;
+        (uint256 staked, ) = IMasterChef(CHEF).userInfo(pid, address(this));
+        return staked;
     }
 
     /// @dev Returns true if this strategy requires tending
     function isTendable() public view override returns (bool) {
-        return true;
+        return balanceOfWant() > 0;
     }
 
     // @dev These are the tokens that cannot be moved except by the vault
@@ -108,8 +107,7 @@ contract MyStrategy is BaseStrategy {
     {
         address[] memory protectedTokens = new address[](3);
         protectedTokens[0] = want;
-        protectedTokens[1] = lpComponent;
-        protectedTokens[2] = reward;
+        protectedTokens[1] = reward;
         return protectedTokens;
     }
 
@@ -136,10 +134,18 @@ contract MyStrategy is BaseStrategy {
     /// @dev invest the amount of want
     /// @notice When this function is called, the controller has already sent want to this
     /// @notice Just get the current balance and then invest accordingly
-    function _deposit(uint256 _amount) internal override {}
+    function _deposit(uint256 _amount) internal override {
+        IMasterChef(CHEF).deposit(pid, _amount);
+    }
 
     /// @dev utility function to withdraw everything for migration
-    function _withdrawAll() internal override {}
+    function _withdrawAll() internal override {
+        IMasterChef(CHEF).withdrawAndHarvest(
+            pid,
+            balanceOfPool(),
+            address(this)
+        );
+    }
 
     /// @dev withdraw the specified amount of want, liquidate from lpComponent to want, paying off any necessary debt for the conversion
     function _withdrawSome(uint256 _amount)
@@ -147,6 +153,13 @@ contract MyStrategy is BaseStrategy {
         override
         returns (uint256)
     {
+        uint256 inPool = balanceOfPool();
+        if (_amount > inPool) {
+            _amount = inPool;
+        }
+
+        IMasterChef(CHEF).withdraw(pid, _amount);
+
         return _amount;
     }
 
@@ -158,12 +171,71 @@ contract MyStrategy is BaseStrategy {
 
         // Write your code here
 
-        uint256 earned =
-            IERC20Upgradeable(want).balanceOf(address(this)).sub(_before);
+        IMasterChef(CHEF).harvest(pid, address(this));
+
+        // Get total rewards (SUSHI)
+        uint256 rewardsAmount = IERC20Upgradeable(reward).balanceOf(
+            address(this)
+        );
+
+        // Swap half sushi to btc2xfli and half to wbtc
+
+        // Swap Sushi for wBTC through path: SUSHI -> wBTC
+        uint256 sushiTowbtcAmount = rewardsAmount.mul(5000).div(MAX_BPS);
+        address[] memory path = new address[](2);
+        path = new address[](2);
+        path[0] = reward;
+        path[1] = wBTC;
+        IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
+            sushiTowbtcAmount,
+            0, // TODO: should change this maybe use chainlink
+            path,
+            address(this),
+            now
+        );
+
+        // Swap Sushi for btc2xfli through path: SUSHI -> btc2xfli
+        uint256 sushiTobtc2xfliAmount = rewardsAmount.sub(sushiTowbtcAmount);
+        path = new address[](2);
+        path[0] = reward;
+        path[1] = btc2xfli;
+        IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
+            sushiTobtc2xfliAmount,
+            0, // TODO: should change this maybe use chainlink
+            path,
+            address(this),
+            now
+        );
+
+        // Add liquidity for BTC2xFLI-WBTC pool
+        // check if they are needed to be added in the exact ratio or router takes care of it
+        uint256 wbtcIn = IERC20Upgradeable(wBTC).balanceOf(address(this));
+        uint256 btc2xfliIn = IERC20Upgradeable(btc2xfli).balanceOf(
+            address(this)
+        );
+
+        IUniswapRouterV2(SUSHISWAP_ROUTER).addLiquidity(
+            btc2xfli,
+            wBTC,
+            btc2xfliIn,
+            wbtcIn,
+            btc2xfliIn.mul(slippage).div(MAX_BPS),
+            wbtcIn.mul(slippage).div(MAX_BPS),
+            address(this),
+            now
+        );
+
+        // harvest rewards
+
+        uint256 earned = IERC20Upgradeable(want).balanceOf(address(this)).sub(
+            _before
+        );
 
         /// @notice Keep this in so you get paid!
-        (uint256 governancePerformanceFee, uint256 strategistPerformanceFee) =
-            _processPerformanceFees(earned);
+        (
+            uint256 governancePerformanceFee,
+            uint256 strategistPerformanceFee
+        ) = _processPerformanceFees(earned);
 
         // TODO: If you are harvesting a reward token you're not compounding
         // You probably still want to capture fees for it
