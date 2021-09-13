@@ -123,7 +123,7 @@ def deployed():
         btc2xfli.balanceOf(deployer) * 0.005,
         wbtc.balanceOf(deployer) * 0.005,
         deployer,
-        int(time.time()) + 12000,
+        9999999999999999,
         {"from": deployer},
     )
 
