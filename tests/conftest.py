@@ -94,7 +94,7 @@ def deployed():
     btc2xfli.approve(router.address, 999999999999999999999999999999, {"from": deployer})
     wbtc.approve(router.address, 999999999999999999999999999999, {"from": deployer})
 
-    deposit_amount = 5 * 10 ** 18
+    deposit_amount = 15 * 10 ** 18
 
     # Buy wbtc with path ETH -> WETH -> WBTC
     router.swapExactETHForTokens(
@@ -123,7 +123,7 @@ def deployed():
         btc2xfli.balanceOf(deployer) * 0.005,
         wbtc.balanceOf(deployer) * 0.005,
         deployer,
-        int(time.time()) + 1200,
+        int(time.time()) + 12000,
         {"from": deployer},
     )
 
