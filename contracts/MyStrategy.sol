@@ -33,8 +33,9 @@ contract MyStrategy is BaseStrategy {
     address public constant btc2xfli =
         0x0B498ff89709d3838a063f1dFA463091F9801c2b;
     address public constant wBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address public constant wETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    uint256 public constant pid = 234; // TODO: BTC2XFLI-WBTC-SUSHI pool ID
+    uint256 public constant pid = 234; // BTC2XFLI-WBTC-SUSHI pool ID
     uint256 public slippage = 50; // in terms of bps = 0.5%
     uint256 public constant MAX_BPS = 10_000;
 
@@ -52,7 +53,7 @@ contract MyStrategy is BaseStrategy {
         address _controller,
         address _keeper,
         address _guardian,
-        address[3] memory _wantConfig,
+        address[2] memory _wantConfig,
         uint256[3] memory _feeConfig
     ) public initializer {
         __BaseStrategy_init(
@@ -72,7 +73,25 @@ contract MyStrategy is BaseStrategy {
         withdrawalFee = _feeConfig[2];
 
         /// @dev do one off approvals here
-        // IERC20Upgradeable(want).safeApprove(gauge, type(uint256).max);
+        IERC20Upgradeable(want).safeApprove(CHEF, type(uint256).max);
+
+        // Adding approve for uniswap router else it gives STF(Safe transfer failure) error
+        IERC20Upgradeable(reward).safeApprove(
+            SUSHISWAP_ROUTER,
+            type(uint256).max
+        );
+        IERC20Upgradeable(wETH).safeApprove(
+            SUSHISWAP_ROUTER,
+            type(uint256).max
+        );
+        IERC20Upgradeable(wBTC).safeApprove(
+            SUSHISWAP_ROUTER,
+            type(uint256).max
+        );
+        IERC20Upgradeable(btc2xfli).safeApprove(
+            SUSHISWAP_ROUTER,
+            type(uint256).max
+        );
     }
 
     /// ===== View Functions =====
@@ -140,11 +159,7 @@ contract MyStrategy is BaseStrategy {
 
     /// @dev utility function to withdraw everything for migration
     function _withdrawAll() internal override {
-        IMasterChef(CHEF).withdrawAndHarvest(
-            pid,
-            balanceOfPool(),
-            address(this)
-        );
+        IMasterChef(CHEF).withdraw(pid, balanceOfPool());
     }
 
     /// @dev withdraw the specified amount of want, liquidate from lpComponent to want, paying off any necessary debt for the conversion
@@ -171,60 +186,68 @@ contract MyStrategy is BaseStrategy {
 
         // Write your code here
 
-        IMasterChef(CHEF).harvest(pid, address(this));
-
         // Get total rewards (SUSHI)
+
+        IMasterChef(CHEF).withdraw(pid, 0);
+
         uint256 rewardsAmount = IERC20Upgradeable(reward).balanceOf(
             address(this)
         );
 
-        // Swap half sushi to btc2xfli and half to wbtc
+        if (rewardsAmount > 0) {
+            // Swap half sushi to btc2xfli and half to wbtc
 
-        // Swap Sushi for wBTC through path: SUSHI -> wBTC
-        uint256 sushiTowbtcAmount = rewardsAmount.mul(5000).div(MAX_BPS);
-        address[] memory path = new address[](2);
-        path = new address[](2);
-        path[0] = reward;
-        path[1] = wBTC;
-        IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
-            sushiTowbtcAmount,
-            0, // TODO: should change this maybe use chainlink
-            path,
-            address(this),
-            now
-        );
+            // Swap Sushi for wBTC through path: SUSHI -> wBTC
+            uint256 sushiTowbtcAmount = rewardsAmount.mul(5000).div(MAX_BPS);
 
-        // Swap Sushi for btc2xfli through path: SUSHI -> btc2xfli
-        uint256 sushiTobtc2xfliAmount = rewardsAmount.sub(sushiTowbtcAmount);
-        path = new address[](2);
-        path[0] = reward;
-        path[1] = btc2xfli;
-        IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
-            sushiTobtc2xfliAmount,
-            0, // TODO: should change this maybe use chainlink
-            path,
-            address(this),
-            now
-        );
+            address[] memory path = new address[](2);
+            path = new address[](3);
+            path[0] = reward;
+            path[1] = wETH;
+            path[2] = wBTC;
+            IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
+                sushiTowbtcAmount,
+                0, // TODO: should change this maybe use chainlink
+                path,
+                address(this),
+                now
+            );
 
-        // Add liquidity for BTC2xFLI-WBTC pool
-        // check if they are needed to be added in the exact ratio or router takes care of it
-        uint256 wbtcIn = IERC20Upgradeable(wBTC).balanceOf(address(this));
-        uint256 btc2xfliIn = IERC20Upgradeable(btc2xfli).balanceOf(
-            address(this)
-        );
+            // Swap Sushi for btc2xfli through path: SUSHI -> btc2xfli
+            uint256 sushiTobtc2xfliAmount = rewardsAmount.sub(
+                sushiTowbtcAmount
+            );
+            path = new address[](4);
+            path[0] = reward;
+            path[1] = wETH;
+            path[2] = wBTC;
+            path[3] = btc2xfli;
+            IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
+                sushiTobtc2xfliAmount,
+                0, // TODO: should change this maybe use chainlink
+                path,
+                address(this),
+                now
+            );
 
-        IUniswapRouterV2(SUSHISWAP_ROUTER).addLiquidity(
-            btc2xfli,
-            wBTC,
-            btc2xfliIn,
-            wbtcIn,
-            btc2xfliIn.mul(slippage).div(MAX_BPS),
-            wbtcIn.mul(slippage).div(MAX_BPS),
-            address(this),
-            now
-        );
+            // Add liquidity for BTC2xFLI-WBTC pool
+            // check if they are needed to be added in the exact ratio or router takes care of it
+            uint256 wbtcIn = IERC20Upgradeable(wBTC).balanceOf(address(this));
+            uint256 btc2xfliIn = IERC20Upgradeable(btc2xfli).balanceOf(
+                address(this)
+            );
 
+            IUniswapRouterV2(SUSHISWAP_ROUTER).addLiquidity(
+                btc2xfli,
+                wBTC,
+                btc2xfliIn,
+                wbtcIn,
+                btc2xfliIn.mul(slippage).div(MAX_BPS),
+                wbtcIn.mul(slippage).div(MAX_BPS),
+                address(this),
+                now
+            );
+        }
         // harvest rewards
 
         uint256 earned = IERC20Upgradeable(want).balanceOf(address(this)).sub(
