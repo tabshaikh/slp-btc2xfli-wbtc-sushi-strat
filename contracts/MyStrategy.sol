@@ -198,10 +198,9 @@ contract MyStrategy is BaseStrategy {
             // Swap half sushi to btc2xfli and half to wbtc
 
             // Swap Sushi for wBTC through path: SUSHI -> wBTC
-            uint256 sushiTowbtcAmount = rewardsAmount.mul(5000).div(MAX_BPS);
+            uint256 sushiTowbtcAmount = rewardsAmount.mul(5_000).div(MAX_BPS);
 
-            address[] memory path = new address[](2);
-            path = new address[](3);
+            address[] memory path = new address[](3);
             path[0] = reward;
             path[1] = wETH;
             path[2] = wBTC;
