@@ -9,6 +9,9 @@ import "../deps/@openzeppelin/contracts-upgradeable/math/MathUpgradeable.sol";
 import "../deps/@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../deps/@openzeppelin/contracts-upgradeable/token/ERC20/SafeERC20Upgradeable.sol";
 
+import {IMasterChef} from "../interfaces/sushi/IMasterChef.sol";
+import {IUniswapRouterV2} from "../interfaces/uniswap/IUniswapRouterV2.sol";
+
 import "../interfaces/badger/IController.sol";
 
 import {BaseStrategy} from "../deps/BaseStrategy.sol";
@@ -21,6 +24,20 @@ contract MyStrategy is BaseStrategy {
     // address public want // Inherited from BaseStrategy, the token the strategy wants, swaps into and tries to grow
     address public lpComponent; // Token we provide liquidity with
     address public reward; // Token we farm and swap to want / lpComponent
+
+    // pair info https://sushiswap-vision.vercel.app/pair/0x164fe0239d703379bddde3c80e4d4800a1cd452b
+
+    address public constant CHEF = 0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd; // MasterChef contract address on mainnet
+    address public constant SUSHISWAP_ROUTER =
+        0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
+
+    address public constant btc2xfli =
+        0x0B498ff89709d3838a063f1dFA463091F9801c2b;
+    address public constant wBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+
+    uint256 public constant pid = 234; // TODO: BTC2XFLI-WBTC-SUSHI pool ID
+    uint256 public slippage = 50; // in terms of bps = 0.5%
+    uint256 public constant MAX_BPS = 10_000;
 
     // Used to signal to the Badger Tree that rewards where sent to it
     event TreeDistribution(
