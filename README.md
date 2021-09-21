@@ -4,6 +4,25 @@
 ### APR ( as calculated on 13th September, 2021)
 APR = 0.25% (Pool fees by depositing BTC2X-FLI and WBTC in BTC2X-FLI/WBTC pool, proportional to their share of the pool.) + 20.03% (Depositing SLP-BTC2X-FLI/WBTC into Sushifarm) = 20.28%
 
+### Installation and Setup
+
+ - Install the dependencies in the package
+```
+## Javascript dependencies
+npm i
+
+## Python Dependencies
+pip install virtualenv
+virtualenv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+ - import brownie network config
+```
+brownie networks import network-config.yaml 
+# if you have the network with same name already in your `brownie networks list` the above command will fail, to overcome this change the name of the networks in network-config.yaml and brownie-config.yaml accordingly.
+```
+
 # Badger Strategy V1 Brownie Mix
 
 - Video Introduction: https://youtu.be/FVbhgPYW_D0
