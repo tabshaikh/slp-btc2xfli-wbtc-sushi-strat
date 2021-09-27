@@ -131,10 +131,6 @@ contract MyStrategy is BaseStrategy {
     }
 
     /// ===== Permissioned Actions: Governance =====
-    /// @notice Delete if you don't need!
-    function setKeepReward(uint256 _setKeepReward) external {
-        _onlyGovernance();
-    }
 
     /// ===== Internal Core Implementations =====
 
@@ -184,8 +180,6 @@ contract MyStrategy is BaseStrategy {
 
         uint256 _before = IERC20Upgradeable(want).balanceOf(address(this));
 
-        // Write your code here
-
         // Get total rewards (SUSHI)
 
         IMasterChef(CHEF).withdraw(pid, 0);
@@ -206,7 +200,7 @@ contract MyStrategy is BaseStrategy {
             path[2] = wBTC;
             IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
                 sushiTowbtcAmount,
-                0, // TODO: should change this maybe use chainlink
+                0,
                 path,
                 address(this),
                 now
@@ -223,14 +217,13 @@ contract MyStrategy is BaseStrategy {
             path[3] = btc2xfli;
             IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
                 sushiTobtc2xfliAmount,
-                0, // TODO: should change this maybe use chainlink
+                0,
                 path,
                 address(this),
                 now
             );
 
             // Add liquidity for BTC2xFLI-WBTC pool
-            // check if they are needed to be added in the exact ratio or router takes care of it
             uint256 wbtcIn = IERC20Upgradeable(wBTC).balanceOf(address(this));
             uint256 btc2xfliIn = IERC20Upgradeable(btc2xfli).balanceOf(
                 address(this)
@@ -259,23 +252,6 @@ contract MyStrategy is BaseStrategy {
             uint256 strategistPerformanceFee
         ) = _processPerformanceFees(earned);
 
-        // TODO: If you are harvesting a reward token you're not compounding
-        // You probably still want to capture fees for it
-        // // Process Sushi rewards if existing
-        // if (sushiAmount > 0) {
-        //     // Process fees on Sushi Rewards
-        //     // NOTE: Use this to receive fees on the reward token
-        //     _processRewardsFees(sushiAmount, SUSHI_TOKEN);
-
-        //     // Transfer balance of Sushi to the Badger Tree
-        //     // NOTE: Send reward to badgerTree
-        //     uint256 sushiBalance = IERC20Upgradeable(SUSHI_TOKEN).balanceOf(address(this));
-        //     IERC20Upgradeable(SUSHI_TOKEN).safeTransfer(badgerTree, sushiBalance);
-        //
-        //     // NOTE: Signal the amount of reward sent to the badger tree
-        //     emit TreeDistribution(SUSHI_TOKEN, sushiBalance, block.number, block.timestamp);
-        // }
-
         /// @dev Harvest event that every strategy MUST have, see BaseStrategy
         emit Harvest(earned, block.number);
 
@@ -293,6 +269,12 @@ contract MyStrategy is BaseStrategy {
     /// @dev Rebalance, Compound or Pay off debt here
     function tend() external whenNotPaused {
         _onlyAuthorizedActors();
+        uint256 balanceOfWant = IERC20Upgradeable(want).balanceOf(
+            address(this)
+        );
+        if (balanceOfWant > 0) {
+            _deposit(balanceOfWant);
+        }
     }
 
     /// @notice sets slippage tolerance for liquidity provision in terms of BPS ie.
