@@ -1,10 +1,39 @@
-# BTC2X-FLI/WBTC Sushi Strategy
-![btc2xfli-wbtc](https://user-images.githubusercontent.com/31198893/133130794-ace0cc27-fe74-47a8-bf5a-c56494188fb4.jpg)
+# SLP-BTC2X-FLI/wBTC Sushi Strategy
 
-### APR ( as calculated on 13th September, 2021)
+![Cover Image](https://user-images.githubusercontent.com/31198893/134859330-dcaf54f9-a75f-49c0-890e-2492819ad69b.png)
+
+**Video:** https://youtu.be/M0fQsAbwAj8
+
+**Slides:** https://docs.google.com/presentation/d/1HJDxMf_71PO-vOrCf2s2Zt1fc4oALS0ajFqy7nr0YqI/edit?usp=sharing
+
+This strategy deposits slp-BTC2xFLI/WBTC tokens into BTC2xFLI/WBTC SLP SushiSwap Farm. It will then claim sushi rewards swap them into slp-BTC2xFLI/WBTC and compound the amount deposited.
+
+![btc2xfli-wbtc](https://user-images.githubusercontent.com/31198893/134859444-de95f6a5-c3e5-47bf-8365-d0a4b53d6021.jpg)
+
+# Functions
+
+### Deposit:
+
+Deposit fund's in BTC2xFLI/WBTC SLP SushiSwap Farm on Mainnet.
+
+### Withdraw:
+
+Withdraw fund's from BTC2xFLI/WBTC SLP SushiSwap Farm.
+
+### Harvest:
+
+Harvest Sushi rewards, swap them into BTC2xFLI and WBTC and then adds Liquidity into BTC2xFLI/WBTC Sushi Pool to get SLP-WBTC/WETH token(want).
+
+### Tend
+
+If there's any want in the strategy, deposit it in the pool.
+
+# APR ( as calculated on 13th September, 2021)
 APR = 0.25% (Pool fees by depositing BTC2X-FLI and WBTC in BTC2X-FLI/WBTC pool, proportional to their share of the pool.) + 20.03% (Depositing SLP-BTC2X-FLI/WBTC into Sushifarm) = 20.28%
 
-### Installation and Setup
+# Installation and Setup
+
+- [Install Brownie](https://eth-brownie.readthedocs.io/en/stable/install.html) & [Ganache-CLI](https://github.com/trufflesuite/ganache-cli), if you haven't already.
 
  - Install the dependencies in the package
 ```
@@ -22,6 +51,8 @@ pip install -r requirements.txt
 brownie networks import network-config.yaml 
 # if you have the network with same name already in your `brownie networks list` the above command will fail, to overcome this change the name of the networks in network-config.yaml and brownie-config.yaml accordingly.
 ```
+
+# Original Readme:
 
 # Badger Strategy V1 Brownie Mix
 
