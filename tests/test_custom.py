@@ -54,3 +54,7 @@ def test_custom_harvest(deployer, vault, strategy, want):
     assert strategy.isTendable()
     # Strategy shouldn't have any rewards left
     assert reward.balanceOf(strategy) == 0
+
+    strategy.tend({"from": deployer})
+    # Strategy should re-deposit all extra want
+    assert strategy.balanceOfWant() == 0
